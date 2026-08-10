@@ -1,4 +1,3 @@
-import React from 'react';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { formatRelative } from '../../utils/format';

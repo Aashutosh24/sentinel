@@ -1,4 +1,3 @@
-import React from 'react';
 import { AlertTriangle, Check, X } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { Badge, type BadgeTone } from '../ui/Badge';

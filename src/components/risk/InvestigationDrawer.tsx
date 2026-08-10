@@ -1,4 +1,3 @@
-import React from 'react';
 import { ExternalLink, Sparkles } from 'lucide-react';
 import { Drawer } from '../ui/Drawer';
 import { Button } from '../ui/Button';

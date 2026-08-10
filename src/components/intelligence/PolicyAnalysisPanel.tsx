@@ -1,4 +1,3 @@
-import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { FileSearch, Loader2, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { SectionCard } from '../common/SectionCard';

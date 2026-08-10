@@ -1,4 +1,3 @@
-import React from 'react';
 import { motion } from 'framer-motion';
 import { ShieldAlert, ShieldCheck } from 'lucide-react';
 import { SectionCard } from '../common/SectionCard';

@@ -1,4 +1,3 @@
-import React from 'react';
 import { ArrowDownRight, ArrowUpRight, Minus } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useCountUp } from '../../hooks/useCountUp';
