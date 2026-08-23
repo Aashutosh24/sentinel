@@ -27,8 +27,15 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 10080
     refresh_token_expire_days: int = 7
 
-    # CORS — frontend is built separately (Next.js), so this stays permissive for the hackathon
-    allowed_origins: list[str] = ["http://localhost:5173", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:5173", "*"]
+    # CORS
+    frontend_url: str | None = None
+    
+    @property
+    def allowed_origins(self) -> list[str]:
+        origins = ["http://localhost:5173", "http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:5173"]
+        if self.frontend_url:
+            origins.append(self.frontend_url)
+        return origins
 
     # Ingestion
     uploads_dir: str = "/mnt/user-data/uploads"
