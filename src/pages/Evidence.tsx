@@ -181,7 +181,7 @@ export function Evidence() {
       <>
           <MetaStat
           label="Artifacts"
-          value={coverage?.total_evidence_items ?? evidenceItems.length}
+          value={`${coverage?.total_evidence_items ?? evidenceItems.length}`}
           icon={<FileBadge className="h-3.5 w-3.5" aria-hidden />} />
         
           <MetaStat label="Automated" value={`${automatedPct}%`} />
