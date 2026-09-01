@@ -19,5 +19,20 @@ export default defineConfig({
         secure: false,
       }
     }
+  },
+  preview: {
+    port: 4173,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:8000',
+        changeOrigin: true,
+        secure: false,
+      },
+      '/v1': {
+        target: 'http://localhost:8000/api',
+        changeOrigin: true,
+        secure: false,
+      }
+    }
   }
 })

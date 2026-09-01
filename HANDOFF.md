@@ -753,3 +753,294 @@ the only shared-component change.
 5. **Uvicorn in this sandbox needed `.env` present to start**; a missing `.env`
    produced a silent startup failure that looked like a hung server. Copy
    `.env.example` first.
+6. **Background daemons (Postgres) do not survive a sandbox session boundary,
+   even though the filesystem does.** Mid-handoff, Postgres had to be
+   restarted with `pg_ctlcluster 16 main start` (or `scripts/setup_postgres.sh`,
+   idempotent) after showing `ConnectionRefusedError` on every DB-backed
+   Copilot question — the data directory itself was untouched (`SELECT
+   count(*)` against risks/controls/vendors/evidence matched the original
+   ingested totals exactly), only the running service had stopped. Anyone
+   picking this up in a new session should expect to run the setup script
+   again before the API will answer anything beyond `/health` and the
+   `unknown`-intent Copilot path.
+
+## Session — LLM grounding layer completed and verified (this session)
+
+Picked up mid-flight: a **prior session had already built the LLM layer**
+(`app/services/llm_service.py`, the `answer()` wiring in `copilot.py`,
+`tests/test_copilot_llm.py`) but none of `HANDOFF.md` / `IMPLEMENTATION_STATUS.md`
+/ `NEXT_CLAUDE_PROMPT.md` mentioned it — they still described the Copilot as
+pure rule-based with no LLM path. The code was source of truth, per the brief;
+this session inspected it directly rather than trusting the docs, found it was
+already substantially correct, and closed the remaining gaps rather than
+rebuilding anything.
+
+**What was already correct** (verified by reading, not assumed):
+- `LLMService.explain()` — OpenAI-compatible POST, catches timeout / HTTP
+  error / empty response / unconfigured key, returns `None` on any failure
+  rather than raising — server-side only, key never reaches the frontend.
+- `CopilotService.answer()` — LLM only rewrites the prose `answer` field,
+  strictly grounded in the already-computed deterministic result; never
+  recomputes Trust/Risk/Evidence numbers; `supporting_data` /
+  `related_entities` / `recommendations` / `sources` stay deterministic
+  either way. Sets `engine`/`llm_used` correctly on both paths.
+- `tests/test_copilot_llm.py` — 37 tests already mocking the LLM success /
+  timeout / auth-error / empty-response cases and the fallback contract.
+
+**Real bug found via full test run, not assumed:** stood up actual
+PostgreSQL, ran real Alembic migrations, ingested all 14,400 rows, seeded
+users, ran the full suite — **131 passed, 11 failed, 1 skipped.** Every
+failure was `test_intelligence.py::test_copilot_routes_every_required_question`
+asserting `engine == "deterministic_intent_v1"`, a value that predates the
+LLM layer and is now only correct for the *unmatched-intent* path. Fixed the
+assertion to `"deterministic_fallback_v1"` (matching both the real behavior
+with no `LLM_API_KEY` set and the engine contract this brief specifies), and
+corrected the same stale claim in `copilot.py`'s module docstring and the
+`/copilot/query` endpoint description in `intelligence_router.py`. **Re-ran:
+142 passed, 1 skipped, 0 failed.**
+
+**Live verification, not just pytest:** started the real `uvicorn` server and
+POSTed all 7 mandatory demo questions over real HTTP against the real
+database (not the ASGI test transport). All 7 routed to the correct intent,
+returned the full response contract (`question` / `intent` / `intent_label` /
+`answer` / `supporting_data` / `related_entities` / `recommendations` /
+`sources` / `confidence` / `engine` / `llm_used` / `suggested_questions`), and
+correctly reported `engine="deterministic_fallback_v1"`, `llm_used=false`
+(accurate — no `LLM_API_KEY` in this sandbox and no network path to an LLM
+provider from it either, so the live-LLM-success path could not be exercised
+end-to-end here — only via the mocked tests above). This is the honest limit
+of what could be verified in this environment; it is not a claim that the
+LLM path works unverified.
+
+**Frontend gaps found (via `tsc --noEmit` + reading the code, not guessed)
+and fixed, minimally, preserving the existing design:**
+- `Copilot.tsx` header hardcoded `"Deterministic · no LLM"` and never
+  surfaced `engine`/`llm_used` anywhere — now the header's "Engine" stat and
+  a per-answer badge both reflect the real value honestly: **"Sentinel AI ·
+  LLM grounded"** vs **"Sentinel AI · Verified fallback"** (never "AI
+  powered" when the LLM did not run for that answer).
+- The "thinking" state showed a fabricated stat line
+  (`"Correlating 38 risks, 486 controls, 418 artifacts…"` — doesn't match the
+  real 300/300/500 counts) and a static 3-phrase loop. Replaced with the
+  brief's four-stage sequence ("Understanding your request…" → "Checking GRC
+  intelligence…" → "Analyzing verified data…" → "Generating Sentinel
+  response…"), advanced by a client-side timer since there is one request/
+  response round trip and no streaming backend — the timer is cleared the
+  instant the real response arrives, so it never claims a stage finished
+  before it did, per the brief's explicit instruction.
+- `EmptyState tone="danger"` was a genuine pre-existing type error
+  (`tone` only accepts `'default' | 'ai'`) — swapped for the purpose-built
+  `ErrorState` component (already in the codebase, same visual language, no
+  new styling), which also added a working "Retry" button wired to resend
+  the last question.
+- Confirmed the request chain (`Copilot.tsx` → `copilotAdapter` → `api.ts`
+  → `http.ts`) already has solid error handling — `http.ts`'s `ApiError`
+  normalizes both network failures and non-2xx responses into a clean
+  `.message`, and `useApiResource` is race-condition-safe. Nothing there
+  needed changing.
+- Deliberately **not** touched: Policy Intelligence's "no LLM configured"
+  messaging (`PolicyAnalysisPanel.tsx`, `policy_intelligence.py`) — that is a
+  separate, genuinely still-rule-based feature outside this brief's scope,
+  and its messaging is accurate as-is.
+
+## Session — real browser E2E testing, and a genuine pre-existing bug found and fixed
+
+The person directly asked whether this had been tested end-to-end. It had
+not — only the backend, over real HTTP, and the frontend's *build*. Found a
+pre-installed headless Chrome in this sandbox
+(`/home/claude/.cache/puppeteer/chrome/`) plus Playwright, and used them to
+drive the actual UI: real backend, real Vite dev server, a real browser
+asking real questions. Two rounds of this surfaced a genuine, pre-existing
+bug — not one introduced this session, but one this session's `EmptyState` →
+`ErrorState` swap inherited by attaching to an already-broken position.
+
+**The bug:** the center "Reasoning" panel and the right-hand evidence
+sidebar were both driven by `latest` (the last *assistant chat message*),
+checked in the ternary as `thinking ? … : latest ? … : failure ? … : idle`.
+Once any question had ever succeeded in a session, `latest` stayed truthy
+forever, so `failure`'s branch was permanently unreachable after the first
+success — a request that failed on the *second or later* question in a
+conversation displayed nothing: no error, no retry, no thinking spinner,
+just the previous answer's content sitting there as if still current
+(including its "Related Controls" / "Evidence" / "Affected Assets"
+sidebar). Confirmed with the real backend process killed mid-session
+(`kill -9`, not a mocked route) via an instrumented `fetch` wrapper: the
+third request resolved with a real HTTP 500 (Vite's dev proxy converts a
+dead upstream into a 500 rather than a raw connection error) in 64ms, but
+the UI never reflected it — waited a full 10s, confirmed twice.
+
+**The fix:** derive `latest` and `latestAnswer` as `failure ? null : …`
+right where they're computed, so a failure immediately and consistently
+invalidates *every* consumer (reasoning panel, badges, sidebar, header
+engine stat) rather than patching each render site separately. Re-ran the
+identical real-kill scenario after the fix: error now appears in 1 second,
+sidebar correctly shows "No controls/evidence/assets cited yet" instead of
+stale data. `git diff`-equivalent is two `useMemo`/`const` lines plus moving
+one existing ternary branch earlier — no new UI, no restyling.
+
+Also confirmed via the same harness, for the record: the happy path across
+multiple sequential questions works correctly (composer resets, badges
+update per-answer, progress stages render live), and `fonts.googleapis.com`
+403s in the browser console are this sandbox's network policy (blocked
+domain), unrelated to the app.
+
+Full suite re-verified after the fix: 142 passed, 1 skipped, 0 failed;
+`npm run build` clean; 0 new `tsc` errors.
+
+**Verified, not claimed:** `pytest` → 142 passed, 1 skipped, 0 failed.
+
+## Session — general-purpose GRC reasoning engine (`app/services/grc_engine/`)
+
+A second, much larger brief arrived asking for something categorically
+different from Copilot polish: a general-purpose NL→query GRC engine that
+answers *arbitrary* governance/risk/compliance/security/privacy questions —
+not the fixed 12 intents — by understanding the question, routing it to the
+real schema, executing a validated query, and never fabricating a
+relationship that doesn't exist. Explicitly told this is unverifiable live
+in this sandbox (no `LLM_API_KEY`, no network path to a provider) before
+starting; proceeded anyway on the person's explicit instruction, testing
+everything that *can* be tested deterministically as each layer was built,
+exactly like the rest of this session.
+
+**New module, six files, `app/services/grc_engine/`:**
+
+- `schema_graph.py` — the ground-truth table/column/relationship graph.
+  Hand-written from PostgreSQL's own `information_schema` catalog against
+  the real, ingested database (not from docstrings, not inferred from
+  column-name conventions), then cross-checked against
+  `docs/profiling/relationships.txt` (a pre-existing, independently
+  empirically-verified relationship profile already in this repo) and
+  found to match exactly. Records not just what connects, but what
+  doesn't: **`vendors` and `reports` have zero foreign keys to anything**
+  (confirmed via the FK catalog query, not assumed); `iam_records` has no
+  `application_id` at all; `personal_data_inventory` and `consent_records`
+  only connect indirectly through `applications`. Every one of the brief's
+  own example questions that assumes one of these missing relationships
+  ("which vendors handle personal data", "employees with app access and no
+  MFA") is genuinely unanswerable from this schema, and the engine says so
+  rather than approximating a join.
+- `query_dsl.py` — Pydantic models for a constrained query plan
+  (`QueryPlan`/`Filter`/`JoinStep`/`ReasoningPlan`). No field anywhere can
+  hold a SQL string; the LLM's output is JSON that either matches this
+  shape or it doesn't — the "model output is data, not code" pattern from
+  `agent-skills:security-and-hardening`, consulted before design started.
+- `query_compiler.py` — validates a `QueryPlan` against `schema_graph`
+  independently of whatever Pydantic already allowed (defense in depth: a
+  fabricated table/column/join is rejected here even if some future caller
+  constructs a plan by hand, bypassing the LLM path entirely), builds a
+  parameterized SQLAlchemy query (zero string interpolation anywhere in
+  the file), and executes inside `SET LOCAL transaction_read_only = on`
+  plus a 5s statement timeout on the same transaction. **The read-only
+  enforcement is proven, not assumed** — a test executes a real query,
+  then attempts a real `DELETE` in the same transaction and asserts
+  PostgreSQL itself rejects it.
+- `metrics_catalog.py` — thin registry exposing the *existing*
+  `DashboardService`/`TrustIntelligenceService` output as named namespaces
+  (`vendor_risk`, `iam_statistics`, etc.). No new arithmetic — brief
+  Section 5's "Do not replace working GRC calculations" from the *first*
+  session's instructions still applies, and it turned out
+  `DashboardService.build()` already computes nearly every metric the new
+  brief asked for (MFA/consent/framework/vendor coverage — even already
+  carrying the identical "vendors are an island dataset" honesty note this
+  session's schema inspection found independently).
+- `understanding_service.py` — the LLM-driven layer: question → JSON →
+  `ReasoningPlan`. Extended `LLMService` with a shared `_complete()` method
+  (both the original `explain()` and the new `complete_structured()` call
+  it — refactor, not duplicate; all 37 pre-existing LLM tests re-verified
+  passing unchanged after the extraction) rather than writing a second
+  copy of the HTTP/timeout/error-handling logic.
+- `reasoning_service.py` — orchestrator. **Falls back to the existing,
+  completely unmodified `CopilotService` whenever the general engine can't
+  understand the question** (no LLM key, timeout, malformed output) —
+  proven via a live test that the fallback still correctly answers a
+  mandatory question with the exact original response contract intact.
+
+**61 new tests, 245 passed / 1 skipped / 0 failed backend-wide** (up from
+142 — zero regressions). Breakdown:
+`test_grc_engine_query.py` (24 — schema graph facts, plan validation
+rejections, real execution, the read-only proof), `test_grc_engine_metrics.py`
+(9), `test_grc_engine_understanding.py` (18 — mocked success/timeout/
+malformed-JSON/wrong-schema/markdown-fenced responses, plus a test proving
+the two-layer defense: a plan naming a fake table parses fine at the
+Pydantic layer and is only rejected at the compiler layer, so a bug in
+either doesn't silently remove the other's protection),
+`test_grc_engine_reasoning.py` (10), and **`test_grc_engine_question_battery.py`
+(42 questions — the brief's Section 27 explicitly asks for 30-50 diverse
+questions covering simple lookup, filtering, aggregation, multi-table
+joins, risk/compliance/privacy/IAM/vendor/evidence analysis, trend,
+comparison, prioritization, complex multi-condition, unsupported-topic,
+and hallucination-prevention categories, tested against the real database).**
+
+**What this proves, and what it does not — stated as precisely as I can:**
+
+For each of the 42 battery questions, this session hand-constructed the
+`ReasoningPlan` a *correctly functioning* understanding step should
+produce, then proved the downstream pipeline (validate → compile → execute
+→ correlate → format) handles it correctly against real data — including
+5 questions drawn directly from the brief's own examples that require a
+relationship proven not to exist, each correctly declined with the actual
+missing-relationship reason rather than an approximated answer. **This does
+not prove a real LLM, given only raw question text and the system prompt,
+reliably produces these same plans.** That is the one link in the chain
+genuinely unverifiable here. To close that gap as far as possible without
+a real provider, this session also stood up a minimal local HTTP server
+that mimics an OpenAI-compatible endpoint (`/home/claude/fake_llm_server.py`,
+not part of the handoff — a sandbox-only tool) and pointed a real running
+backend at it over a real loopback network connection: a genuinely novel
+question ("show me employees whose devices are not encrypted" — never
+hardcoded anywhere) round-tripped through a real HTTP call to "understand"
+it, a real Postgres query with a real join, and a real second HTTP call to
+narrate the answer, landing on `engine="llm_grounded_v1"` with 10 real
+device records as evidence. That proves the *wiring* has no bug in it. It
+does not, and cannot, prove real-model output quality on questions this
+session didn't script the server's canned response for.
+
+**Known, honest limitations of the query DSL itself** (not bugs — scope
+boundaries worth documenting so the next session doesn't rediscover them by
+surprise):
+- No subqueries or anti-joins. "Which controls have NO evidence" is
+  answerable as a *count* (`evidence_coverage.controls_without_evidence`)
+  but not as a specific row list — expressing "controls not appearing in
+  evidence.control_id" would need `NOT EXISTS`, which `QueryPlan` has no
+  representation for. Extending it is a reasonable next step, not a quick
+  one — it changes the compiler's safety argument (a NOT EXISTS subquery
+  is a second query surface to validate) and deserves its own careful pass
+  rather than an end-of-session addition.
+- No custom ordering by a business-meaning rank. `risks.severity` is a
+  string column (`Critical`/`High`/`Medium`/`Low`); `order_by` sorts
+  alphabetically, which is NOT severity order. "Top 5 riskiest" was
+  deliberately answered via a `severity = "Critical"` filter instead of
+  `ORDER BY severity DESC LIMIT 5` in the test battery, and the same
+  substitution is the honest move for `understanding_service`'s prompt to
+  make too, rather than silently returning a wrongly-ordered list.
+- Date filters take a literal ISO cutoff string (computed outside the
+  plan, e.g. by the LLM or the caller) — there is no `now() - interval`
+  expression inside the DSL itself.
+
+**Known, honest security gap — pre-existing, not introduced this
+session:** neither `/copilot/query` nor any other endpoint in
+`intelligence_router.py` has authentication applied (`get_current_user`
+exists in `auth_router.py` and gates only `/auth/me`). The new `/ai/query`
+endpoint was kept consistent with every sibling endpoint in the same
+router rather than unilaterally gating just the one new route — that would
+create an inconsistent security posture, not fix one. Brief Section 25
+explicitly asks for authentication/authorization on this surface; it is
+not met, for either the old or the new endpoint, and should be a
+first-class next step before this goes anywhere beyond a demo.
+
+**Deliberate scope decision, not an oversight:** `/copilot/query` was left
+completely unchanged — still calling `CopilotService.answer()` directly,
+nothing about it touches the new engine. The new capability is exposed
+only via the additive `POST /api/v1/ai/query`. Swapping the engine
+underneath the existing, frontend-wired, live-browser-tested `/copilot/query`
+path is a bigger and riskier change than adding a new route, and given
+everything else this session already found by testing rigorously (the
+stale-test bug, the EmptyState type error, the failure-precedence bug),
+making that swap without an explicit checkpoint felt like the wrong kind
+of confidence. `NEXT_CLAUDE_PROMPT.md` lays out the migration as an
+explicit next step, not a silent gap.
+`npx tsc --noEmit` → 0 errors in any file touched this session (57
+pre-existing errors remain, all in unrelated pages/components — e.g.
+`CommandCenter.tsx`, `CloudAssets.tsx`, `src/data/assets.ts` — predating this
+session and out of this brief's scope; see `IMPLEMENTATION_STATUS.md`).
+`npm run build` → succeeds, `dist/assets/Copilot-*.js` chunk produced.

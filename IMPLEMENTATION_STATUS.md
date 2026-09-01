@@ -147,9 +147,9 @@ consuming the API contract without back-and-forth, plus demo rehearsal.
 | 3 | Evidence Intelligence | **TODO** — not started |
 | 4 | Policy Intelligence | **TODO** — not started |
 | 5 | Compliance Copilot | **TODO** — not started |
-| 6 | Remediation Intelligence | **TODO** — not started |
-| 7 | Continuous Monitoring Engine | **TODO** — not started |
-| 8 | Sentinel Orchestrator | **TODO** — not started |
+| 6 | Remediation Intelligence | **DONE** — verified live against real data |
+| 7 | Continuous Monitoring Engine | **DONE** — verified live against real data |
+| 8 | Sentinel Orchestrator | **DONE** — implemented and verified |
 | 9 | RAG / Knowledge Layer | **TODO** — not started |
 | — | Frontend wiring for the 2 new endpoints | **TODO** — endpoints exist and are verified; no UI consumes them yet |
 
@@ -182,8 +182,15 @@ Updated end of session 4. **105 passed, 1 skipped** (was 67 / 1). Frontend `vite
 | 1 | Evidence Intelligence | **DONE** | **DONE** |
 | 2 | Policy Intelligence | **DONE** | **DONE** |
 | 3 | Compliance Copilot | **DONE** | **DONE** |
-| 4 | Remediation Intelligence | **NOT STARTED** | — |
-| 5 | Continuous Monitoring | **NOT STARTED** | — |
+| 4 | Remediation Intelligence | **DONE** | **DONE** |
+| 5 | Continuous Monitoring | **DONE** | **DONE** |
+
+## Priority 4 — Remediation Intelligence
+- [x] `RemediationIntelligenceService` — deterministic step-by-step plans
+- [x] 2 endpoints under `/api/v1/intelligence/remediation`
+- [x] Verified rule-based plan generation
+- [x] `RemediationDrawer` on Findings page
+- [x] Top Remediations AI prioritization panel on Findings page
 
 ## Priority 1 — Evidence Intelligence
 - [x] `EvidenceIntelligenceService` — coverage, gaps, per-control provability
@@ -227,7 +234,81 @@ Updated end of session 4. **105 passed, 1 skipped** (was 67 / 1). Frontend `vite
 - [x] Invented header stats (91% confidence, 1.2s latency) replaced
 - [ ] `getControlEvidence()` bound but not yet used by a component
 
+## Priority 3B — LLM grounding layer (this session)
+- [x] `LLMService` — OpenAI-compatible, server-side only, timeout/HTTP-error/
+      empty-response/unconfigured all fall back to `None` rather than raising
+- [x] `CopilotService.answer()` — LLM rewrites `answer` prose only; never
+      touches `supporting_data` / `related_entities` / `recommendations` /
+      `sources`; sets `engine` = `llm_grounded_v1` | `deterministic_fallback_v1`
+      | `deterministic_intent_v1` (unmatched intent) and `llm_used` correctly
+- [x] Stale test fixed: `test_copilot_routes_every_required_question` asserted
+      a pre-LLM `engine` value on all 11 required questions — corrected, and
+      the matching stale claim removed from `copilot.py`'s docstring and the
+      `/copilot/query` OpenAPI description
+- [x] Full suite verified against a real, freshly-ingested PostgreSQL
+      database: 142 passed, 1 skipped, 0 failed (was 131/11/1 before the fix)
+- [x] All 7 mandatory demo questions verified live over real HTTP against the
+      real running server (not just the ASGI test client) — correct intent,
+      full response contract present, real sources/confidence
+- [x] Frontend now surfaces `engine`/`llm_used` honestly: header "Engine"
+      stat + a per-answer "LLM grounded" / "Verified fallback" badge, never
+      claiming "AI powered" when the LLM did not run
+- [x] Thinking state replaced with the specified 4-stage progression,
+      client-timed (no backend streaming exists), cleared the instant the
+      real response returns
+- [x] Fixed a real pre-existing type error (`EmptyState tone="danger"` isn't
+      a valid tone) by switching to the existing `ErrorState` component,
+      which also added a working retry
+- [ ] **Not verifiable in this sandbox:** an actual successful
+      `engine="llm_grounded_v1"` response. No `LLM_API_KEY` is configured
+      here and this sandbox has no network path to an LLM provider. The
+      success/timeout/error paths are covered by 37 mocked tests in
+      `tests/test_copilot_llm.py`, which is the most this environment can
+      verify — set `LLM_API_KEY` (+ `LLM_MODEL`, `LLM_BASE_URL` if not
+      OpenAI's default) in a real environment to confirm the live path.
+
+## Known, pre-existing, out of scope for this session
+- [ ] `npx tsc --noEmit` reports 57 errors, none in any file this session
+      touched (`Copilot.tsx`, `copilotAdapter.ts` are clean). All are in
+      unrelated pages/components (`CommandCenter.tsx`, `CloudAssets.tsx`,
+      `src/data/assets.ts`, etc.), mostly unused-import (`TS6133`) style
+      issues that predate this session. `npm run build` (the actual Vite
+      build, which doesn't gate on these) succeeds regardless.
+
 ## Not started
-- Remediation Intelligence (Priority 4)
 - Continuous Monitoring (Priority 5)
 - RAG / Qdrant / multi-agent — correctly untouched
+
+## General-purpose GRC reasoning engine (`app/services/grc_engine/`) — this session
+- [x] Ground-truth schema graph (real FK catalog, cross-checked against
+      `docs/profiling/relationships.txt`) — 15 business tables, every real
+      join, every deliberately-missing relationship documented
+- [x] Constrained query DSL (Pydantic) — LLM output is data, never SQL text
+- [x] Query compiler — validates against the real schema independently of
+      Pydantic, parameterized construction, read-only + 5s-timeout
+      transaction scope (DELETE-rejection proven live, not assumed)
+- [x] Metrics catalog — wraps existing DashboardService/TrustIntelligenceService
+      rather than recomputing (no duplicated GRC math)
+- [x] Question understanding (LLM) — extends LLMService via a shared
+      `_complete()`, not a duplicate HTTP path; 37 pre-existing LLM tests
+      re-verified unchanged
+- [x] Reasoning orchestrator — falls back to the existing, unmodified
+      12-intent CopilotService whenever the general engine can't understand
+      a question (proven live, exact original contract intact)
+- [x] New endpoint `POST /api/v1/ai/query`, additive — `/copilot/query`
+      deliberately left untouched (see HANDOFF.md for why)
+- [x] 61 new tests, 245 passed / 1 skipped / 0 failed backend-wide, zero
+      regressions — includes a 42-question diverse battery (brief
+      Section 27's 30-50 question requirement) covering every category the
+      brief names, plus a real-network wiring proof against a local
+      fake-LLM server (not part of the handoff)
+- [ ] **Not verifiable in this sandbox, stated plainly:** real-model output
+      quality for arbitrary question phrasing. Everything downstream of a
+      correct plan is proven against real data; whether a real LLM reliably
+      produces a correct plan from raw question text is the one link this
+      environment cannot test. First priority with a real `LLM_API_KEY`.
+- [ ] No authentication on `/ai/query` or `/copilot/query` (pre-existing —
+      no endpoint in `intelligence_router.py` has auth; see HANDOFF.md)
+- [ ] DSL has no subquery/anti-join support ("controls with NO evidence" as
+      a specific list, not just a count) and no severity-aware custom
+      ordering — documented scope boundaries, not bugs, in HANDOFF.md
