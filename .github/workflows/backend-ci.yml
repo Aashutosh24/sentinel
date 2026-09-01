@@ -47,4 +47,7 @@ jobs:
           python scripts/seed_users.py
 
       - name: Run tests
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///${{ github.workspace }}/sentinel-ai-backend/sentinel.db
+          DATABASE_URL_SYNC: sqlite:///${{ github.workspace }}/sentinel-ai-backend/sentinel.db
         run: pytest
