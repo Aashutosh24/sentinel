@@ -38,10 +38,16 @@ jobs:
           pip install -e ".[dev]"
 
       - name: Initialize Database
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///${{ github.workspace }}/sentinel-ai-backend/sentinel.db
+          DATABASE_URL_SYNC: sqlite:///${{ github.workspace }}/sentinel-ai-backend/sentinel.db
         run: |
-          python scripts/setup_sqlite_dev.py
+          alembic upgrade head
           python -m app.ingestion.run
           python scripts/seed_users.py
 
       - name: Run tests
+        env:
+          DATABASE_URL: sqlite+aiosqlite:///${{ github.workspace }}/sentinel-ai-backend/sentinel.db
+          DATABASE_URL_SYNC: sqlite:///${{ github.workspace }}/sentinel-ai-backend/sentinel.db
         run: pytest
