@@ -220,7 +220,7 @@ export function Reports() {
               Cancel
             </Button>
             <Button variant="primary" loading={busy} onClick={create}>
-              {busy ? 'Building”¦' : 'Create report'}
+              {busy ? 'Building...' : 'Create report'}
             </Button>
           </>
         }>

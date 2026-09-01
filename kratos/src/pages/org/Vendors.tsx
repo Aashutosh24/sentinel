@@ -199,7 +199,7 @@ export function Vendors() {
       filters={filters}
       ariaLabel="Vendor register"
       exportName="sentinel-vendors"
-      searchPlaceholder="Search vendors, categories, owners”¦"
+      searchPlaceholder="Search vendors, categories, owners..."
       bulkActions={(selected, clear) =>
       <Button variant="outline" size="sm" onClick={clear}>
           Request assurance ({selected.length})

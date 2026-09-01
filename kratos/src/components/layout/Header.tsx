@@ -100,7 +100,7 @@ export function Header({
         className="hidden h-8 w-56 items-center gap-2.5 rounded-md border border-border bg-surface-1/70 px-2.5 text-left text-[13px] text-muted-foreground transition-colors duration-180 hover:border-primary/40 hover:text-foreground md:flex xl:w-72">
         
         <Search className="h-3.5 w-3.5 shrink-0" aria-hidden />
-        <span className="flex-1 truncate">Search everything”¦</span>
+        <span className="flex-1 truncate">Search everything...</span>
         <Kbd>⌘K</Kbd>
       </button>
       <Button

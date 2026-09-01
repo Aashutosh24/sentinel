@@ -357,7 +357,7 @@ class DatasetIngestor:
             index_elements=[config.pk],
             set_=updatable,
         )
-        if self.session.bind.dialect.name == "sqlite":
+        if self.session.get_bind().dialect.name == "sqlite":
             stmt = stmt.returning(text("1 AS was_inserted"))
         else:
             stmt = stmt.returning(text("(xmax = 0) AS was_inserted"))

@@ -353,7 +353,8 @@ export function toFrameworkScore(summary: ApiFrameworkSummary): FrameworkScore {
     status: complianceStatus(summary.latest_report_status),
     authority: FRAMEWORK_AUTHORITY[summary.framework] ?? NOT_AVAILABLE,
     nextAudit: '',
-    owner: NOT_AVAILABLE
+    owner: NOT_AVAILABLE,
+    controlDomains: summary.control_domains
   };
 }
 

@@ -269,6 +269,7 @@ export interface ApiFrameworkSummary {
   latest_report_score: number | null;
   latest_report_status: string | null;
   latest_report_date: string | null;
+  control_domains?: Array<{ domain: string; passing: number; failing: number }>;
 }
 
 export interface ApiDashboard {

@@ -493,7 +493,7 @@ async def test_copilot_suggestions_endpoint(client):
 
 async def test_copilot_rejects_empty_questions(client):
     assert (
-        await client.post("/api/v1/copilot/query", json={"question": "hi"})
+        await client.post("/api/v1/copilot/query", json={"question": ""})
     ).status_code == 422
 
 

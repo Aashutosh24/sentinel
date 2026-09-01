@@ -14,7 +14,6 @@ import { getDevices } from '../../services/api';
 import { useApiResource } from '../../hooks/useApiResource';
 import { AsyncSection } from '../../components/common/AsyncSection';
 import { formatRelative } from '../../utils/format';
-import { deviceHealth } from '../../data/organization';
 import type { Device } from '../../types/domain';
 
 const columns: Column<Device>[] = [
@@ -122,7 +121,17 @@ export function Devices() {
   const unhealthy = devices.filter((d) => d.edr !== 'pass').length;
   const totalDevices = devices.length;
   const encryptedCount = devices.filter((d) => d.encryption === 'pass').length;
-  const encryptedPct = totalDevices ? Math.round((encryptedCount / totalDevices) * 100) : 100;
+  const edrCount = devices.filter((d) => d.edr === 'pass').length;
+  const patchCount = devices.filter((d) => d.patch === 'pass').length;
+  const encryptedPct = totalDevices ? Math.round((encryptedCount / totalDevices) * 100) : 0;
+  const edrPct = totalDevices ? Math.round((edrCount / totalDevices) * 100) : 0;
+  const patchPct = totalDevices ? Math.round((patchCount / totalDevices) * 100) : 0;
+
+  const deviceHealth = [
+    { id: 'encryption', label: 'Disk encryption', value: encryptedPct },
+    { id: 'edr', label: 'EDR agent healthy', value: edrPct },
+    { id: 'patch', label: 'Patch level current', value: patchPct }
+  ];
 
 
   if (state.status !== 'success') {
@@ -146,7 +155,7 @@ export function Devices() {
           icon={<Laptop className="h-3.5 w-3.5" aria-hidden />} />
         
           <MetaStat label="Encryption" value={`${encryptedPct}%`} />
-          <MetaStat label="Patch currency" value="78%" />
+          <MetaStat label="Patch currency" value={`${patchPct}%`} />
         </>
       }
       metrics={
@@ -200,7 +209,7 @@ export function Devices() {
       pageSize={7}
       ariaLabel="Device inventory"
       exportName="sentinel-devices"
-      searchPlaceholder="Search devices, owners, platforms”¦"
+      searchPlaceholder="Search devices, owners, platforms..."
       bulkActions={(selected, clear) =>
       <Button variant="outline" size="sm" onClick={clear}>
           Force compliance check ({selected.length})

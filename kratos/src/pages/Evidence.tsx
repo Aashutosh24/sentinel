@@ -20,9 +20,8 @@ import {
 import { EvidenceCoveragePanel } from '../components/intelligence/EvidenceCoveragePanel';
 import { useApiResource } from '../hooks/useApiResource';
 import { AsyncSection } from '../components/common/AsyncSection';
-
 import { formatDate, formatRelative } from '../utils/format';
-import { evidenceCoverage } from '../data/evidence';
+
 import type { EvidenceItem } from '../types/domain';
 
 const columns: Column<EvidenceItem>[] = [
@@ -155,7 +154,15 @@ export function Evidence() {
   const coverage = state.data?.coverage ?? null;
   const filters = React.useMemo(() => buildFilters(evidenceItems), [evidenceItems]);
   const expired = evidenceItems.filter((e) => e.status === 'expired').length;
-
+  const automatedCount = evidenceItems.filter(e => e.automated).length;
+  const totalItems = evidenceItems.length;
+  const automatedPct = totalItems > 0 ? Math.round((automatedCount / totalItems) * 100) : 0;
+  const manualPct = totalItems > 0 ? 100 - automatedPct : 0;
+  
+  const evidenceCoverage = [
+    { id: 'automated', label: 'Automated collection', value: automatedPct },
+    { id: 'manual', label: 'Manual upload', value: manualPct }
+  ];
 
   if (state.status !== 'success') {
     return <AsyncSection state={state}>{() => null}</AsyncSection>;
@@ -174,10 +181,10 @@ export function Evidence() {
       <>
           <MetaStat
           label="Artifacts"
-          value="418"
+          value={coverage?.total_evidence_items ?? evidenceItems.length}
           icon={<FileBadge className="h-3.5 w-3.5" aria-hidden />} />
         
-          <MetaStat label="Automated" value="74%" />
+          <MetaStat label="Automated" value={`${automatedPct}%`} />
           <MetaStat
             label="Controls evidenced"
             value={`${new Set(evidenceItems.map((e) => e.control)).size} of ${controls.length}`} />
@@ -229,7 +236,7 @@ export function Evidence() {
             color: i === 2 ? 'var(--ai)' : `var(--chart-${i + 1})`
           }))}
           height={188}
-          centerValue="74%"
+          centerValue={`${automatedPct}%`}
           centerLabel="automated" />
         
           <ul className="mt-3 space-y-1.5">
@@ -249,7 +256,7 @@ export function Evidence() {
       pageSize={7}
       ariaLabel="Evidence repository"
       exportName="sentinel-evidence"
-      searchPlaceholder="Search evidence, controls, sources”¦"
+      searchPlaceholder="Search evidence, controls, sources..."
       bulkActions={(selected, clear) =>
       <Button variant="outline" size="sm" onClick={clear}>
           Re-collect ({selected.length})
@@ -299,7 +306,7 @@ export function Evidence() {
                       Integrity
                     </dt>
                     <dd className="mt-1 truncate font-mono text-xs text-success">
-                      sha256:9f2c41e8a7b3”¦d18f · verified
+                      sha256:9f2c41e8a7b3...d18f · verified
                     </dd>
                   </div>
                 </dl>

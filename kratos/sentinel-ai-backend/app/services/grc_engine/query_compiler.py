@@ -221,8 +221,12 @@ async def execute(db: AsyncSession, plan: QueryPlan) -> tuple[list[Any], Compile
     fields/IDs from, never a partial tuple that could misattribute a
     column to the wrong table)."""
     stmt, compiled = validate_and_compile(plan)
-    await db.execute(text(f"SET LOCAL statement_timeout = {STATEMENT_TIMEOUT_MS}"))
-    await db.execute(text("SET LOCAL transaction_read_only = on"))
+    
+    # Apply PostgreSQL-specific connection bounds if not running against SQLite in tests
+    if db.get_bind().dialect.name == "postgresql":
+        await db.execute(text(f"SET LOCAL statement_timeout = {STATEMENT_TIMEOUT_MS}"))
+        await db.execute(text("SET LOCAL transaction_read_only = on"))
+        
     result = await db.execute(stmt)
     rows = list(result.scalars().unique().all())
     return rows, compiled

@@ -252,7 +252,7 @@ export function DataInventory() {
       pageSize={7}
       ariaLabel="Personal data inventory"
       exportName="sentinel-personal-data"
-      searchPlaceholder="Search data elements, applications, purposes”¦"
+      searchPlaceholder="Search data elements, applications, purposes..."
       bulkActions={(selected, clear) =>
       <Button variant="outline" size="sm" onClick={clear}>
           Schedule purge ({selected.length})

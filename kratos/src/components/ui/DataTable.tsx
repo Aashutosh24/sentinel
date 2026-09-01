@@ -59,7 +59,7 @@ export function DataTable<T>({
   error = false,
   onRetry,
   onRowClick,
-  searchPlaceholder = 'Search”¦',
+  searchPlaceholder = 'Search...',
   exportName = 'sentinel-export',
   bulkActions,
   toolbarExtra,

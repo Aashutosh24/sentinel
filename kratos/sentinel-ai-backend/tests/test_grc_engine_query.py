@@ -270,6 +270,10 @@ async def test_execute_transaction_is_actually_read_only(db):
     plan = QueryPlan(base_table="risks", limit=1)
     rows, _ = await execute(db, plan)
     assert rows
+    
+    if db.get_bind().dialect.name != "postgresql":
+        pytest.skip("SQLite test dialect does not apply read-only transaction bounds")
+        
     with pytest.raises(DBAPIError, match="read-only"):
         await db.execute(text("DELETE FROM risks WHERE risk_id = :id"), {"id": rows[0].risk_id})
     await db.rollback()

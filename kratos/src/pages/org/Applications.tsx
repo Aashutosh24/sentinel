@@ -192,7 +192,7 @@ export function Applications() {
       filters={filters}
       ariaLabel="Application inventory"
       exportName="sentinel-applications"
-      searchPlaceholder="Search applications, owners, data classes”¦"
+      searchPlaceholder="Search applications, owners, data classes..."
       bulkActions={(selected, clear) =>
       <Button variant="outline" size="sm" onClick={clear}>
           Request review ({selected.length})

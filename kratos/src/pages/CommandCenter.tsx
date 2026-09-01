@@ -31,26 +31,6 @@ import { buildCommandCenterView } from './commandCenterView';
 
 export function CommandCenter() {
   const [activeRisk, setActiveRisk] = useState<RiskItem | null>(null);
-  const [demoState, setDemoState] = useState<'healthy' | 'risk_detected' | 'recovering'>('healthy');
-
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'X' && e.shiftKey) {
-        setDemoState(prev => prev === 'healthy' ? 'risk_detected' : prev === 'risk_detected' ? 'recovering' : 'healthy');
-      }
-    };
-    
-    const handleRemediate = () => {
-      setDemoState('recovering');
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('remediate_demo_risk', handleRemediate);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('remediate_demo_risk', handleRemediate);
-    };
-  }, []);
 
   // Two live calls: the aggregate dashboard, and the top critical risks the
   // reviewer will click into. Both hit Postgres — nothing here is seeded.
@@ -81,54 +61,8 @@ export function CommandCenter() {
     headline
   } = view;
 
-  // Hackathon Demo Overrides
-  const finalTrustScore = demoState === 'healthy' || demoState === 'recovering' ? 92 : demoState === 'risk_detected' ? 84 : (trustAi ? trustAi.trust_score : trustScore.value);
-  
-  if (demoState === 'risk_detected') {
-    threatStream = [
-      {
-        id: 'demo-1',
-        time: new Date().toISOString(),
-        severity: 'critical',
-        title: 'GitHub Branch Protection Disabled',
-        source: 'GitHub',
-      },
-      ...threatStream
-    ];
-  }
+  const finalTrustScore = trustAi ? trustAi.trust_score : trustScore.value;
   let topRisks = risks.slice(0, 4);
-
-  if (demoState === 'risk_detected') {
-    topRisks = [
-      {
-        id: 'demo-risk-1',
-        title: 'GitHub Branch Protection Disabled',
-        severity: 'critical',
-        score: 94,
-        asset: 'github.com/company/core-backend',
-        assetType: 'Repository',
-        control: 'Branch Protection',
-        framework: 'SOC 2',
-        owner: 'admin@company.com',
-        department: 'Engineering',
-        status: 'open',
-        updatedAt: new Date().toISOString(),
-        likelihood: 0.9,
-        impact: 0.95,
-        aiConfidence: 98,
-        chain: {
-          policy: 'SOC 2 CC8.1: Code Change Management',
-          control: 'Require Pull Request Reviews',
-          finding: 'Branch protection disabled on `main`',
-          asset: 'github.com/company/core-backend',
-          evidence: 'GitHub Audit Log: `branch_protection_rule.destroy`',
-          impact: 'Direct commits to production branch bypass peer review and CI checks.',
-          recommendation: 'Auto-remediate to enforce branch protection and require 1 reviewer.'
-        }
-      } as any,
-      ...topRisks.slice(0, 3)
-    ];
-  }
   return (
     <div className="space-y-5">
       <PageHeader
@@ -200,7 +134,7 @@ export function CommandCenter() {
             <TrustScore 
               score={finalTrustScore}
               max={trustScore.max}
-              band={demoState === 'risk_detected' ? 'At Risk' : 'Healthy'}
+              band={trustAi ? trustAi.trust_level : trustScore.band}
               domains={trustDomains}
               signals={trustScore.signalsEvaluated}
             />

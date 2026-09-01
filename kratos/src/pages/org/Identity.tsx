@@ -289,7 +289,7 @@ const mfaCoverage =
       pageSize={7}
       ariaLabel="Identity and access inventory"
       exportName="sentinel-identities"
-      searchPlaceholder="Search identities, providers, entitlements”¦"
+      searchPlaceholder="Search identities, providers, entitlements..."
       bulkActions={(selected, clear) =>
       <Button variant="danger" size="sm" onClick={clear}>
           Revoke standing access ({selected.length})

@@ -58,6 +58,7 @@ export interface FrameworkScore {
   authority: string;
   nextAudit: string;
   owner: string;
+  controlDomains?: Array<{ domain: string; passing: number; failing: number }>;
 }
 
 export interface Framework {

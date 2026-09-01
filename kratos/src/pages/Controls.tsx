@@ -232,7 +232,7 @@ export function Controls() {
       filters={filters}
       ariaLabel="Control library"
       exportName="sentinel-controls"
-      searchPlaceholder="Search controls, policies, owners”¦"
+      searchPlaceholder="Search controls, policies, owners..."
       bulkActions={(selected, clear) =>
       <Button
         variant="ai"

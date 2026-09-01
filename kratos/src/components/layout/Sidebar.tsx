@@ -3,7 +3,6 @@ import { motion } from 'framer-motion';
 import { PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { navigation } from '../../data/navigation';
-import { trustScore } from '../../data/trust';
 import { Tooltip } from '../ui/Tooltip';
 import { useApiResource } from '../../hooks/useApiResource';
 import { getDashboard } from '../../services/api';
@@ -21,7 +20,7 @@ export function Sidebar({
 }: {collapsed: boolean;onToggle: () => void;onNavigate?: () => void;className?: string;}) {
   const { pathname } = useLocation();
   const dashboardState = useApiResource(() => getDashboard(), []);
-  const currentTrustScore = dashboardState.data?.trustScore.value ?? trustScore.value;
+  const currentTrustScore = dashboardState.data?.trustScore.value ?? 0;
 
   return (
     <motion.nav

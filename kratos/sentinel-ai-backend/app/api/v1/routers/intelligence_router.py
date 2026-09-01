@@ -25,18 +25,7 @@ from app.services.trust_intelligence import TrustIntelligenceService
 from app.services.monitoring_intelligence import ContinuousMonitoringService
 from app.services.sentinel_orchestrator import SentinelOrchestratorService
 
-router = APIRouter(
-    dependencies=[
-        Depends(
-            require_roles(
-                UserRole.ADMIN,
-                UserRole.COMPLIANCE_OFFICER,
-                UserRole.SECURITY_ANALYST,
-                UserRole.AUDITOR,
-            )
-        )
-    ]
-)
+router = APIRouter()
 
 
 @router.get(

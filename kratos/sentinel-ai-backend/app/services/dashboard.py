@@ -594,6 +594,33 @@ async def framework_summaries(db: AsyncSession) -> list[dict[str, Any]]:
         ).scalars().all()
     }  # ascending, so the last write per framework is the newest
 
+    domains_data: dict[str, dict[str, dict[str, int]]] = {}
+    controls_q = (
+        select(
+            Policy.framework,
+            Policy.category,
+            Control.control_id,
+            case(
+                (Control.control_id.in_(
+                    select(Finding.control_id).where(Finding.status.in_(OPEN_FINDING_STATUSES))
+                ), 1),
+                else_=0
+            ).label("is_failing")
+        )
+        .select_from(Policy)
+        .join(Control, Control.policy_id == Policy.policy_id)
+    )
+    for framework, category, control_id, is_failing in (await db.execute(controls_q)).all():
+        if framework not in domains_data:
+            domains_data[framework] = {}
+        if category not in domains_data[framework]:
+            domains_data[framework][category] = {"passing": 0, "failing": 0}
+        
+        if is_failing:
+            domains_data[framework][category]["failing"] += 1
+        else:
+            domains_data[framework][category]["passing"] += 1
+
     summaries: list[dict[str, Any]] = []
     for framework, policy_count, mandatory_count, control_count in rows:
         with_evidence = evidence_rows.get(framework, 0)
@@ -601,6 +628,12 @@ async def framework_summaries(db: AsyncSession) -> list[dict[str, Any]]:
             framework, (0, 0, 0, 0, 0)
         )
         report = latest_reports.get(framework)
+        
+        control_domains = [
+            {"domain": cat, "passing": counts["passing"], "failing": counts["failing"]}
+            for cat, counts in domains_data.get(framework, {}).items()
+        ]
+        
         summaries.append(
             {
                 "framework": framework,
@@ -622,6 +655,7 @@ async def framework_summaries(db: AsyncSession) -> list[dict[str, Any]]:
                 "latest_report_score": report.overall_score if report else None,
                 "latest_report_status": report.compliance_status if report else None,
                 "latest_report_date": report.generated_date.isoformat() if report else None,
+                "control_domains": control_domains,
             }
         )
     return summaries

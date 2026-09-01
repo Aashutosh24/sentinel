@@ -80,7 +80,7 @@ export function PolicyAnalysisPanel() {
             value={text}
             onChange={(event) => setText(event.target.value)}
             rows={6}
-            placeholder="Paste policy text here”¦"
+            placeholder="Paste policy text here..."
             className="w-full resize-y rounded-lg border border-border bg-surface-2/60 px-3.5 py-3 text-[13px] leading-relaxed outline-none transition focus:border-border-strong" />
 
           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -95,7 +95,7 @@ export function PolicyAnalysisPanel() {
               <FileSearch className="h-3.5 w-3.5" />
               }>
 
-              {busy ? 'Analyzing”¦' : 'Analyze'}
+              {busy ? 'Analyzing...' : 'Analyze'}
             </Button>
             <Button variant="ghost" size="sm" onClick={() => setText(SAMPLE)}>
               Use sample

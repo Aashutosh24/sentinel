@@ -180,7 +180,7 @@ export function AuditLog() {
         filters={filters}
         pageSize={10}
         exportName="sentinel-audit-log"
-        searchPlaceholder="Search actors, actions, targets”¦"
+        searchPlaceholder="Search actors, actions, targets..."
         onRowClick={setActive}
         toolbarExtra={
         <Button variant="ghost" size="sm" iconLeft={<Sparkles className="h-3.5 w-3.5" />}>

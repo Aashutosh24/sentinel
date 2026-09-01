@@ -10,7 +10,13 @@ import { PolicyStatusBadge } from '../components/common/StatusPills';
 import { RelationChain } from '../components/cyber/InvestigationChain';
 import { MetaStat } from '../components/layout/PageHeader';
 import { type Column, type TableFilter } from '../components/ui/DataTable';
-import { policyPipeline } from '../data/policies';
+const policyPipeline = [
+{ id: 'upload', label: 'Upload', detail: 'Document received · SHA-256 recorded' },
+{ id: 'analyzing', label: 'Analyzing', detail: 'Sentinel parsing clauses and obligations' },
+{ id: 'controls', label: 'Controls extracted', detail: '18 candidate controls identified' },
+{ id: 'mapped', label: 'Requirements mapped', detail: 'Mapped to ISO 27001 · SOC 2 · DPDP' },
+{ id: 'evidence', label: 'Evidence identified', detail: '11 evidence requirements generated' }];
+
 import { getControls, getPolicies } from '../services/api';
 import { PolicyAnalysisPanel } from '../components/intelligence/PolicyAnalysisPanel';
 import { useApiResource } from '../hooks/useApiResource';
@@ -152,7 +158,7 @@ function IngestionPipeline({ open, onClose }: {open: boolean;onClose: () => void
             Cancel
           </Button>
           <Button variant="ai" disabled={!done} iconLeft={<Sparkles className="h-4 w-4" />}>
-            {done ? 'Publish 18 controls' : 'Analyzing”¦'}
+            {done ? 'Publish 18 controls' : 'Analyzing...'}
           </Button>
         </>
       }>
@@ -176,7 +182,7 @@ function IngestionPipeline({ open, onClose }: {open: boolean;onClose: () => void
                 Information-Security-Policy-v5.pdf
               </p>
               <p className="font-mono text-2xs text-muted-foreground">
-                412 KB · sha256:7c41”¦9e2b · 34 pages
+                412 KB · sha256:7c41...9e2b · 34 pages
               </p>
             </div>
           </div>
@@ -311,7 +317,7 @@ export function Policies() {
         filters={filters}
         ariaLabel="Policy library"
         exportName="sentinel-policies"
-        searchPlaceholder="Search policies, frameworks, owners”¦"
+        searchPlaceholder="Search policies, frameworks, owners..."
         detail={{
           title: (p) => p.name,
           subtitle: (p) => `${p.id} · ${p.framework} · owner ${p.owner}`,

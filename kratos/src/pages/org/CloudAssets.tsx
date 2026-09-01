@@ -209,7 +209,7 @@ export function CloudAssets() {
       pageSize={7}
       ariaLabel="Cloud asset inventory"
       exportName="sentinel-cloud-assets"
-      searchPlaceholder="Search resources, services, regions”¦"
+      searchPlaceholder="Search resources, services, regions..."
       bulkActions={(selected, clear) =>
       <Button variant="danger" size="sm" onClick={clear}>
           Block public access ({selected.length})

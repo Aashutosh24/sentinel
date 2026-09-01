@@ -265,7 +265,7 @@ export function RiskCenter() {
         filters={filters}
         pageSize={9}
         exportName="sentinel-risk-register"
-        searchPlaceholder="Search risks, assets, owners, controls”¦"
+        searchPlaceholder="Search risks, assets, owners, controls..."
         onRowClick={setActive}
         bulkActions={(selected, clear) =>
           <>

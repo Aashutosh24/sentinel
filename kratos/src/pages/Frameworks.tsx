@@ -14,7 +14,6 @@ import { StackedBarsChart } from '../components/charts/ChartPrimitives';
 import { getFrameworks } from '../services/api';
 import { useApiResource } from '../hooks/useApiResource';
 import { AsyncSection } from '../components/common/AsyncSection';
-import { controlDomains } from '../data/frameworks';
 import { formatDate } from '../utils/format';
 import type { FrameworkScore } from '../types/domain';
 
@@ -77,7 +76,7 @@ export function Frameworks() {
         <SearchInput
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search frameworks or authorities”¦"
+          placeholder="Search frameworks or authorities..."
           aria-label="Search frameworks"
           wrapperClassName="w-full sm:w-80" />
         
@@ -221,17 +220,23 @@ export function Frameworks() {
             </dl>
             <div>
               <h3 className="mb-3 text-[13px] font-semibold">Control domains</h3>
+            {active.controlDomains && active.controlDomains.length > 0 ? (
               <StackedBarsChart
-              label="Passing and failing controls by domain"
-              data={controlDomains}
-              xKey="domain"
-              layout="vertical"
-              height={260}
-              series={[
-              { key: 'passing', name: 'Passing', color: 'var(--success)' },
-              { key: 'failing', name: 'Failing', color: 'var(--risk-critical)' }]
-              } />
-            
+                label="Passing and failing controls by domain"
+                data={active.controlDomains}
+                xKey="domain"
+                layout="vertical"
+                height={260}
+                series={[
+                  { key: 'passing', name: 'Passing', color: 'var(--success)' },
+                  { key: 'failing', name: 'Failing', color: 'var(--risk-critical)' }
+                ]}
+              />
+            ) : (
+              <p className="text-sm text-muted-foreground mt-4">
+                No domain data available for this framework.
+              </p>
+            )}
             </div>
           </div>
         }

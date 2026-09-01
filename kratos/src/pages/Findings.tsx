@@ -198,7 +198,7 @@ export function Findings() {
         filters={filters}
         pageSize={10}
         exportName="sentinel-findings"
-        searchPlaceholder="Search findings, assets, controls”¦"
+        searchPlaceholder="Search findings, assets, controls..."
         onRowClick={openRemediation}
         bulkActions={(selected, clear) =>
         <>

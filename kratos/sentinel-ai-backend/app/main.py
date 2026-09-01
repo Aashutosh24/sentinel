@@ -16,6 +16,8 @@ from fastapi.responses import JSONResponse
 
 from app.api.v1.resources import RESOURCES
 from app.api.v1.routers import auth_router, dashboard_router, detail_router, intelligence_router
+from app.api.v1.routers.auth_router import get_current_user
+from fastapi import Depends
 from app.api.v1.routers.resource_router import build_resource_router
 from app.core.config import settings
 
@@ -88,12 +90,12 @@ def create_app() -> FastAPI:
     # registered BEFORE the generic resource routes, or the generic
     # `/{identifier}` handler would shadow them.
     app.include_router(auth_router.router, prefix="/api/v1/auth")
-    app.include_router(dashboard_router.router, prefix="/api/v1")
-    app.include_router(intelligence_router.router, prefix="/api/v1")
-    app.include_router(detail_router.router, prefix="/api/v1")
+    app.include_router(dashboard_router.router, prefix="/api/v1", dependencies=[Depends(get_current_user)])
+    app.include_router(intelligence_router.router, prefix="/api/v1", dependencies=[Depends(get_current_user)])
+    app.include_router(detail_router.router, prefix="/api/v1", dependencies=[Depends(get_current_user)])
 
     for spec in RESOURCES:
-        app.include_router(build_resource_router(spec), prefix="/api/v1")
+        app.include_router(build_resource_router(spec), prefix="/api/v1", dependencies=[Depends(get_current_user)])
 
     return app
 

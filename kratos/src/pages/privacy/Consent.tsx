@@ -218,7 +218,7 @@ export function Consent() {
       pageSize={7}
       ariaLabel="Consent register"
       exportName="sentinel-consent"
-      searchPlaceholder="Search purposes, applications, basis”¦"
+      searchPlaceholder="Search purposes, applications, basis..."
       detail={{
         title: (c) => c.purpose,
         subtitle: (c) =>

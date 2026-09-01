@@ -5,17 +5,18 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { CornerDownLeft, Search, Sparkles } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { navigation } from '../../data/navigation';
-import { risks } from '../../data/risks';
-import { controls, findings } from '../../data/controls';
-import { policies } from '../../data/policies';
-import { evidenceItems } from '../../data/evidence';
 import {
-  applications,
-  cloudAssets,
-  devices,
-  employees,
-  vendors } from
-'../../data/organization';
+  getRisks,
+  getControls,
+  getFindings,
+  getPolicies,
+  getEvidence,
+  getEmployees,
+  getDevices,
+  getApplications,
+  getCloudAssets,
+  getVendors
+} from '../../services/api';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { Kbd } from '../ui/Controls';
 
@@ -29,7 +30,7 @@ interface Command {
 }
 
 /** One flat searchable index across every entity in the estate. */
-function buildIndex(): Command[] {
+function buildIndex(data: any): Command[] {
   return [
   {
     id: 'ai-ask',
@@ -56,77 +57,76 @@ function buildIndex(): Command[] {
     to: item.to
   }))
   ),
-  ...risks.map((r) => ({
+  ...(data.risks || []).map((r: any) => ({
     id: `risk-${r.id}`,
     label: `${r.id} · ${r.title}`,
     group: 'Risks',
     hint: `${r.severity} · ${r.owner}`,
     to: '/risk'
   })),
-  ...findings.map((f) => ({
+  ...(data.findings || []).map((f: any) => ({
     id: `finding-${f.id}`,
     label: `${f.id} · ${f.title}`,
     group: 'Findings',
     hint: f.control,
     to: '/findings'
   })),
-  ...controls.map((c) => ({
+  ...(data.controls || []).map((c: any) => ({
     id: `control-${c.id}`,
     label: `${c.id} · ${c.name}`,
     group: 'Controls',
     hint: c.framework,
     to: '/controls'
   })),
-  ...policies.map((p) => ({
+  ...(data.policies || []).map((p: any) => ({
     id: `policy-${p.id}`,
     label: p.name,
     group: 'Policies',
     hint: p.framework,
     to: '/policies'
   })),
-  ...employees.map((e) => ({
+  ...(data.employees || []).map((e: any) => ({
     id: `emp-${e.id}`,
     label: e.name,
     group: 'Employees',
     hint: `${e.department} · ${e.role}`,
     to: '/org/employees'
   })),
-  ...devices.map((d) => ({
+  ...(data.devices || []).map((d: any) => ({
     id: `dev-${d.id}`,
     label: d.id,
     group: 'Devices',
     hint: `${d.owner} · ${d.os}`,
     to: '/org/devices'
   })),
-  ...applications.map((a) => ({
+  ...(data.applications || []).map((a: any) => ({
     id: `app-${a.id}`,
     label: a.name,
     group: 'Applications',
     hint: `${a.criticality} · ${a.owner}`,
     to: '/org/applications'
   })),
-  ...cloudAssets.map((c) => ({
+  ...(data.cloudAssets || []).map((c: any) => ({
     id: `cld-${c.id}`,
     label: c.resource,
     group: 'Cloud Assets',
     hint: `${c.provider} · ${c.region}`,
     to: '/org/cloud'
   })),
-  ...vendors.map((v) => ({
+  ...(data.vendors || []).map((v: any) => ({
     id: `ven-${v.id}`,
     label: v.name,
     group: 'Vendors',
     hint: `${v.category} · risk ${v.riskScore}`,
     to: '/org/vendors'
   })),
-  ...evidenceItems.map((e) => ({
+  ...(data.evidenceItems || []).map((e: any) => ({
     id: `ev-${e.id}`,
     label: `${e.id} · ${e.name}`,
     group: 'Evidence',
     hint: e.control,
     to: '/evidence'
   }))];
-
 }
 
 export function CommandPalette({
@@ -140,9 +140,33 @@ export function CommandPalette({
   const ref = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState('');
   const [active, setActive] = useState(0);
+  const [data, setData] = useState<any>(null);
   useFocusTrap(ref, open, onClose);
 
-  const index = useMemo(buildIndex, []);
+  useEffect(() => {
+    if (open && !data) {
+      Promise.all([
+        getRisks(), getControls(), getFindings(), getPolicies(),
+        getEvidence(), getEmployees(), getDevices(), getApplications(),
+        getCloudAssets(), getVendors()
+      ]).then(([risks, controls, findings, policies, evidence, employees, devices, applications, cloudAssets, vendors]) => {
+        setData({
+          risks: risks.data,
+          controls: controls.data,
+          findings: findings.data,
+          policies: policies.data,
+          evidenceItems: evidence.data,
+          employees: employees.data,
+          devices: devices.data,
+          applications: applications.data,
+          cloudAssets: cloudAssets.data,
+          vendors: vendors.data
+        });
+      });
+    }
+  }, [open, data]);
+
+  const index = useMemo(() => data ? buildIndex(data) : buildIndex({}), [data]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -215,7 +239,7 @@ export function CommandPalette({
               autoFocus
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search employees, devices, cloud, vendors, controls, evidence”¦"
+              placeholder="Search employees, devices, cloud, vendors, controls, evidence..."
               aria-label="Search everything"
               className="h-12 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
             

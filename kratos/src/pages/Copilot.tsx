@@ -28,10 +28,10 @@ import { cn } from '../utils/cn';
 // arrives, however far through it got, so it never claims a stage finished
 // before it did.
 const PROGRESS_STAGES = [
-'Understanding your request”¦',
-'Checking GRC intelligence”¦',
-'Analyzing verified data”¦',
-'Generating Sentinel response”¦'];
+'Understanding your request...',
+'Checking GRC intelligence...',
+'Analyzing verified data...',
+'Generating Sentinel response...'];
 
 
 export function Copilot() {

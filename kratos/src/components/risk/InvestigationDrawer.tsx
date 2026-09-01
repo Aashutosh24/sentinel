@@ -13,7 +13,7 @@ import { useApiResource } from '../../hooks/useApiResource';
 
 /**
  * The investigation workspace. Opens from any risk row, top-risk card or
- * finding and shows the full POLICY â†’ ”¦ â†’ RECOMMENDATION chain.
+ * finding and shows the full POLICY â†’ ... â†’ RECOMMENDATION chain.
  */
 export function InvestigationDrawer({
   risk,

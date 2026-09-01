@@ -181,7 +181,7 @@ export function Employees() {
       filters={filters}
       ariaLabel="Employee directory"
       exportName="sentinel-employees"
-      searchPlaceholder="Search people, departments, roles”¦"
+      searchPlaceholder="Search people, departments, roles..."
       bulkActions={(selected, clear) =>
       <Button variant="outline" size="sm" onClick={clear}>
           Request MFA enrollment ({selected.length})

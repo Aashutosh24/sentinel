@@ -61,25 +61,29 @@ def db_session(sync_engine):
 
 
 @pytest.fixture
-async def client():
-    """
-    httpx client bound directly to the ASGI app — no live server needed.
-
-    Function-scoped, and the async engine is disposed after each test.
-    pytest-asyncio gives every test its own event loop, and an asyncpg pool
-    holds connections bound to the loop that opened them; reusing a
-    session-scoped client leaks connections across loops and fails with
-    "attached to a different loop". Disposing per test is a little slower
-    and completely reliable.
-    """
+async def unauth_client():
     from httpx import ASGITransport, AsyncClient
-
     from app.database.session import engine
 
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
     await engine.dispose()
+
+
+@pytest.fixture
+async def client(unauth_client):
+    """
+    httpx client bound directly to the ASGI app, automatically authenticated.
+    """
+    response = await unauth_client.post(
+        "/api/v1/auth/login",
+        json={"email": "admin@sentinel.ai", "password": DEMO_PASSWORD},
+    )
+    if response.status_code == 200:
+        token = response.json()["data"]["access_token"]
+        unauth_client.headers["Authorization"] = f"Bearer {token}"
+    yield unauth_client
 
 
 @pytest.fixture

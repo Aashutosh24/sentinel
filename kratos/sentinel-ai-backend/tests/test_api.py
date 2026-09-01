@@ -248,8 +248,8 @@ async def test_login_rejects_bad_password(client):
     assert response.status_code == 401
 
 
-async def test_me_requires_a_token(client):
-    assert (await client.get("/api/v1/auth/me")).status_code == 401
+async def test_me_requires_a_token(unauth_client):
+    assert (await unauth_client.get("/api/v1/auth/me")).status_code == 401
 
 
 async def test_refresh_issues_a_new_access_token(client):
